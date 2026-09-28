@@ -89,7 +89,7 @@ export class NotesRuralSuppliersService {
           const isIncomingProducerNote =
             !item.receipt_access_key && Boolean(item.note_access_key);
 
-          for (const existingNote of existingNotes) {
+          for (const existingNote of notesToUpdate) {
             let sefazStatus = existingNote.status;
 
             if (
