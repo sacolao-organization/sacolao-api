@@ -63,14 +63,29 @@ export class NotesRuralSuppliersService {
         });
 
       if (existingNotes.length > 0) {
-        const isDifferentContraNota = existingNotes.some(
-          (existingNote) =>
-            Boolean(existingNote.receipt_access_key) &&
-            Boolean(item.receipt_access_key) &&
-            existingNote.receipt_access_key !== item.receipt_access_key,
-        );
+        let notesToUpdate = existingNotes;
 
-        if (!isDifferentContraNota) {
+        if (item.receipt_access_key) {
+          const exactMatch = existingNotes.filter(
+            (n) => n.receipt_access_key === item.receipt_access_key,
+          );
+
+          if (exactMatch.length > 0) {
+            notesToUpdate = exactMatch;
+          } else {
+            const hasDifferent = existingNotes.some(
+              (n) =>
+                Boolean(n.receipt_access_key) &&
+                n.receipt_access_key !== item.receipt_access_key,
+            );
+
+            if (hasDifferent) {
+              notesToUpdate = [];
+            }
+          }
+        }
+
+        if (notesToUpdate.length > 0) {
           const isIncomingProducerNote =
             !item.receipt_access_key && Boolean(item.note_access_key);
 
