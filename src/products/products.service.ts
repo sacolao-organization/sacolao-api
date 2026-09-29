@@ -143,6 +143,41 @@ export class ProductsService {
                 return;
               }
 
+              const cleanVal = (v: any) => {
+                if (v === null || v === undefined) return '';
+                const str = String(v).trim();
+                const upper = str.toUpperCase();
+                return str === '' ||
+                  str === '-' ||
+                  upper === 'NULL' ||
+                  upper === 'UNDEFINED' ||
+                  upper === '0'
+                  ? ''
+                  : str;
+              };
+
+              const hasValidBilling = cleanVal(monthData.billing) !== '';
+              const hasValidIcms = cleanVal(monthData.icms) !== '';
+              const hasValidAliquot = cleanVal(monthData.icms_aliquot) !== '';
+              const hasValidCest = cleanVal(monthData.cest) !== '';
+              const hasValidCbenef = cleanVal(monthData.cbenef) !== '';
+              const hasValidCclass = cleanVal(monthData.c_class) !== '';
+              const hasValidNcm = cleanVal(monthData.ncm) !== '';
+              const hasValidPisCofins = cleanVal(monthData.pis_cofins) !== '';
+
+              if (
+                !hasValidBilling &&
+                !hasValidIcms &&
+                !hasValidAliquot &&
+                !hasValidCest &&
+                !hasValidCbenef &&
+                !hasValidCclass &&
+                !hasValidNcm &&
+                !hasValidPisCofins
+              ) {
+                return;
+              }
+
               const dataPayload: any = {
                 barcode: monthData.barcode,
                 obs: monthData.obs,
