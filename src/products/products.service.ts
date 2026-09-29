@@ -150,8 +150,7 @@ export class ProductsService {
                 return str === '' ||
                   str === '-' ||
                   upper === 'NULL' ||
-                  upper === 'UNDEFINED' ||
-                  upper === '0'
+                  upper === 'UNDEFINED'
                   ? ''
                   : str;
               };
