@@ -28,8 +28,11 @@ export class ProductsController {
   }
 
   @Get('processor-data')
-  async getProductsForProcessor(@Query('storeId') storeId: string) {
-    return await this.productsService.getProductsForProcessor(storeId);
+  async getProductsForProcessor(
+    @Query('storeId') storeId?: string,
+    @Query('group') group?: string,
+  ) {
+    return await this.productsService.getProductsForProcessor(storeId, group);
   }
 
   @Get('locked-months')
@@ -46,6 +49,8 @@ export class ProductsController {
   async bulkUpdateProducts(@Body('products') products: any[]) {
     return await this.productsService.bulkUpdate(products);
   }
+
+  
 
   @Delete(':id')
   async deleteProduct(@Param('id') id: string) {

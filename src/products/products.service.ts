@@ -349,21 +349,31 @@ export class ProductsService {
     }
   }
 
-  async getProductsForProcessor(storeId: string) {
-    if (!storeId) {
-      throw new BadRequestException('ID da loja é obrigatório');
+  async getProductsForProcessor(storeId?: string, group?: string) {
+    if (!storeId && !group) {
+      throw new BadRequestException('ID da loja ou grupo é obrigatório');
     }
 
-    const store = await this.prisma.stores.findUnique({
-      where: { id: storeId },
-      select: { number: true },
-    });
+    let isLapa = false;
+    let storeNumber = 1;
 
-    if (!store) {
-      throw new BadRequestException('Loja não encontrada');
+    if (group) {
+      isLapa = group === 'lapa';
+      storeNumber = isLapa ? 3 : 1;
+    } else if (storeId) {
+      const store = await this.prisma.stores.findUnique({
+        where: { id: storeId },
+        select: { number: true },
+      });
+
+      if (!store) {
+        throw new BadRequestException('Loja não encontrada');
+      }
+
+      isLapa = store.number === 3;
+
+      storeNumber = store.number ?? 1;
     }
-
-    const isLapa = store.number === 3;
 
     const data = await this.prisma.product_monthly_data.findMany({
       where: {
@@ -420,7 +430,7 @@ export class ProductsService {
 
     return data.map((item) => ({
       ...item,
-      stores: { number: store.number },
+      stores: { number: storeNumber },
     }));
   }
 
