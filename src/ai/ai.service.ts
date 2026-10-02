@@ -26,6 +26,7 @@ Colunas disponíveis nas tabelas principais:
 INSTRUÇÃO PARA CONSULTAS:
 Se precisar buscar informações nas tabelas, retorne APENAS um bloco JSON entre as tags <PRISMA> e </PRISMA>, usando a sintaxe de argumentos do ORM Prisma.
 Operações: "findMany" ou "count".
+ATENÇÃO: Em consultas do tipo "listar", utilize sempre um "take" máximo de 10 ou 15 itens para não sobrecarregar o sistema, e avise o usuário caso haja mais registros.
 Não gere consultas SQL.
 
 Exemplo de uso:
@@ -76,7 +77,13 @@ ${dbSchema}
 
       if (prismaMatch) {
         try {
-          const jsonQuery = JSON.parse(prismaMatch[1].trim());
+          let rawJson = prismaMatch[1].trim();
+          rawJson = rawJson
+            .replace(/```json/gi, '')
+            .replace(/```/g, '')
+            .trim();
+
+          const jsonQuery = JSON.parse(rawJson);
 
           const allowedModels = [
             'suppliers',
@@ -123,6 +130,10 @@ ${dbSchema}
         }
       }
 
+      if (!aiText.trim()) {
+        return 'Desculpe, não consegui processar a resposta. Pode tentar perguntar de outra forma?';
+      }
+
       return aiText.replace(/\*/g, '');
     } catch (error: any) {
       console.error('Erro ao conectar com a API de IA:', error.message);
@@ -134,7 +145,7 @@ ${dbSchema}
     return axios.post(
       'http://localhost:20128/v1/chat/completions',
       {
-        model: 'oc/mimo-v2.5-free',
+        model: process.env.IA_MODEL,
         messages,
         stream: false,
         temperature: 0.1,
@@ -144,7 +155,7 @@ ${dbSchema}
           'Content-Type': 'application/json',
           Authorization: `Bearer ${process.env.ROUTER_TOKEN}`,
         },
-        timeout: 25000,
+        timeout: 60000,
       },
     );
   }
