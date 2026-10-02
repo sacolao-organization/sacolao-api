@@ -10,7 +10,12 @@ export class AiService {
     let contextData = '';
     const qLower = question.toLowerCase();
 
-    if (user.permissions['pdvs.access']) {
+    const hasPdvsAccess = 
+  user?.permissions?.pdvs?.access || 
+  user?.permissions?.pdvs?.tabs?.dashboard?.view || 
+  user?.permissions?.pdvs?.tabs?.access;
+
+    if (hasPdvsAccess) {
   const registers = await this.prisma.cash_registers.findMany({
     include: {
       stores: true,
@@ -68,12 +73,11 @@ ${contextData}
       const response = await axios.post(
         'http://localhost:20128/v1/chat/completions',
         {
-          model: 'oc/muse-spark-1.3-contributor-free',
+          model: 'oc/mimo-v2.5-free',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: question },
-          ],
-          temperature: 0.3,
+          ],stream: false,
         },
         {
           headers: {
