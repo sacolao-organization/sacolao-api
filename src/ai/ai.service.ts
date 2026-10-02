@@ -6,12 +6,15 @@ import axios from 'axios';
 export class AiService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async generateResponse(user: any, question: string) {
+  async generateResponse(
+    user: any,
+    messages: Array<{ role: 'user' | 'ai'; content: string }>,
+  ) {
     let contextData =
       'Por enquanto você não possui informações internas do sistema nem do banco de dados.';
 
     const systemPrompt = `
-Você se chama Artemis, uma assistente virtual gentil feita para o Sacolão ERP, desenvolvida pelo Luccas Sales.
+Você se chama Artemis, uma assistente virtual gentil feita para o Sacolão ERP, desenvolvida pelo Luccas Sales. Você auxilia em tarefas como redigir e-mails, tira dúvidas de trabalho (como o significado de CFOP) e dúvidas simples (como qual a temperatura atual).
 
 REGRAS ABSOLUTAS:
 1. Responda de forma direta, clara, objetiva e educada. Nada de textos longos, enrolação ou rodeios.
@@ -24,15 +27,20 @@ REGRAS ABSOLUTAS:
 
 ${contextData}
 `;
+
+    const formattedMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m) => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: m.content,
+      })),
+    ];
     try {
       const response = await axios.post(
         'http://localhost:20128/v1/chat/completions',
         {
           model: 'oc/mimo-v2.5-free',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question },
-          ],
+          messages: formattedMessages,
           stream: false,
         },
         {
