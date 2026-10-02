@@ -70,7 +70,7 @@ ${dbSchema}
 
     try {
       let response = await this.callAI(formattedMessages);
-      let aiText = response.data.choices[0].message.content;
+      let aiText = response.data.choices[0].message?.content || '';
 
       const prismaMatch = aiText.match(/<PRISMA>([\s\S]*?)<\/PRISMA>/i);
 
@@ -95,19 +95,6 @@ ${dbSchema}
             return 'Por motivos de segurança, apenas pesquisas de leitura são permitidas.';
           }
 
-          if (jsonQuery.model === 'users') {
-            if (!jsonQuery.args) jsonQuery.args = {};
-            if (jsonQuery.args.select) {
-              delete jsonQuery.args.select.password_hash;
-              delete jsonQuery.args.select.id;
-              delete jsonQuery.args.select.created_at;
-            } else {
-              jsonQuery.args.select = {
-                username: true,
-              };
-            }
-          }
-
           const queryResult = await this.prisma[jsonQuery.model][
             jsonQuery.operation
           ](jsonQuery.args || {});
@@ -126,7 +113,7 @@ ${dbSchema}
           });
 
           response = await this.callAI(formattedMessages);
-          aiText = response.data.choices[0].message.content;
+          aiText = response.data.choices[0].message?.content || '';
         } catch (queryError) {
           console.error(
             'Erro ao processar JSON/Prisma gerado pela IA:',
