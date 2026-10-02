@@ -68,7 +68,7 @@ export class AiService {
       const response = await axios.post(
         'http://localhost:20128/v1/chat/completions',
         {
-          model: 'gpt-4o-mini',
+          model: 'oc/muse-spark-1.3-contributor-free',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: question },
