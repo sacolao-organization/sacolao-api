@@ -9,6 +9,8 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { AdminService } from './admin/admin.service';
 import { AdminModule } from './admin/admin.module';
+import { AiService } from './ai/ai.service';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -20,8 +22,9 @@ import { AdminModule } from './admin/admin.module';
     AuthModule,
     ProductsModule,
     AdminModule,
+    AiModule,
   ],
   controllers: [],
-  providers: [PrismaService, AdminService],
+  providers: [PrismaService, AdminService, AiService],
 })
 export class AppModule {}
