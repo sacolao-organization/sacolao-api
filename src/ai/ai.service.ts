@@ -10,59 +10,59 @@ export class AiService {
     let contextData = '';
     const qLower = question.toLowerCase();
 
-    if (
-      user.permissions['pdvs.access'] &&
-      (qLower.includes('caixa') ||
-        qLower.includes('venda') ||
-        qLower.includes('pdv'))
-    ) {
-      const registers = await this.prisma.cash_registers.findMany({
-        select: {
-          id: true,
-          description: true,
-          stores: { select: { number: true } },
-        },
-      });
+    if (user.permissions['pdvs.access']) {
+  const registers = await this.prisma.cash_registers.findMany({
+    include: {
+      stores: true,
+    },
+  });
 
-      const lastSales = await this.prisma.daily_sales.groupBy({
-        by: ['cash_register_id'],
-        _max: { report_date: true },
-        where: { OR: [{ total_nfce: { gt: 0 } }, { total_nfe: { gt: 0 } }] },
-      });
+  const lastSales = await this.prisma.daily_sales.findMany({
+    orderBy: {
+      report_date: 'desc',
+    },
+  });
 
-      const today = new Date();
-      const outdated: string[] = [];
+  contextData = `
+[DADOS DO SISTEMA - SOMENTE LEITURA]
 
-      for (const reg of registers) {
-        const sale = lastSales.find((s) => s.cash_register_id === reg.id);
-        const lastDate = sale?._max?.report_date;
+IMPORTANTE:
+- Estes dados são somente para consulta.
+- Você NÃO possui permissão para alterar o banco de dados.
+- NUNCA execute, sugira executar ou simule operações de INSERT, UPDATE, DELETE, CREATE, ALTER, DROP ou qualquer outra alteração.
+- Se o usuário pedir para alterar, excluir, cadastrar, editar ou modificar qualquer dado, responda que você não possui permissão para realizar alterações.
+- Você pode responder perguntas sobre os dados abaixo normalmente.
+- Não invente informações que não estejam nos dados fornecidos.
 
-        if (lastDate) {
-          const diffDays = Math.ceil(
-            Math.abs(today.getTime() - new Date(lastDate).getTime()) /
-              (1000 * 60 * 60 * 24),
-          );
-          if (diffDays > 5) {
-            outdated.push(
-              `Loja ${reg.stores?.number} - ${reg.description} (Sem vendas há ${diffDays} dias)`,
-            );
-          }
-        } else {
-          outdated.push(
-            `Loja ${reg.stores?.number} - ${reg.description} (Nenhuma venda registrada)`,
-          );
-        }
-      }
+[PDVs]
+${JSON.stringify(registers, null, 2)}
 
-      contextData += `\n[DADOS DE CAIXAS]: Os seguintes caixas estão desatualizados ou sem vendas há mais de 5 dias:\n${outdated.join('\n')}`;
-    }
+[VENDAS]
+${JSON.stringify(lastSales, null, 2)}
+`;
+}
 
-    const systemPrompt = `Você é o assistente virtual do sistema.
-    Responda à pergunta do usuário de forma rápida, curta e direta.
-    Utilize SOMENTE os dados de contexto abaixo caso a pergunta seja sobre o sistema:
-    ${contextData}
-    
-    Se não houver dados no contexto para responder, diga que você ainda não tem essa informação carregada.`;
+    const systemPrompt = `
+Você é o assistente virtual do sistema.
+
+Sua função é SOMENTE CONSULTAR E EXPLICAR informações do sistema.
+
+REGRAS ABSOLUTAS:
+
+1. Você é SOMENTE LEITURA.
+2. Você NUNCA pode modificar o banco de dados.
+3. Você NUNCA pode cadastrar, editar, excluir ou alterar informações.
+4. Você NUNCA deve executar ou fornecer instruções para executar operações SQL de alteração.
+5. Se o usuário pedir para modificar qualquer informação, diga que você não possui permissão para realizar alterações.
+6. Responda perguntas sobre os dados disponíveis no contexto.
+7. Use SOMENTE informações presentes no contexto para responder perguntas sobre o sistema.
+8. Nunca invente números, PDVs, lojas, vendas ou qualquer outro dado.
+9. Se a informação realmente não estiver no contexto, diga que essa informação não está disponível.
+10. Você pode fazer cálculos usando os dados disponíveis, como contar PDVs, comparar datas, calcular quantidades e identificar situações.
+11. Responda de forma curta, clara e direta.
+
+${contextData}
+`;
 
     try {
       const response = await axios.post(
