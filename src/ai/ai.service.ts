@@ -399,34 +399,35 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
 
   private async performWebSearch(query: string): Promise<string> {
     try {
-      const response = await axios.get('https://api.duckduckgo.com/', {
-        params: {
-          q: query,
-          format: 'json',
-          no_html: 1,
-          skip_disambig: 1,
+      const response = await axios.get('https://html.duckduckgo.com/html/', {
+        params: { q: query },
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       });
 
-      const data = response.data;
+      const html = response.data;
 
-      let result = '';
-      if (data.AbstractText) {
-        result += `${data.AbstractText}\n`;
-      }
-      if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-        result += data.RelatedTopics.slice(0, 3)
-          .map((t: any) => t.Text)
-          .join('\n');
+      const regex = /class="result__snippet[^>]*>([\s\S]*?)<\//gi;
+      let matches;
+      const results: string[] = [];
+
+      while ((matches = regex.exec(html)) !== null && results.length < 3) {
+        const cleanText = matches[1].replace(/<\/?[^>]+(>|$)/g, '').trim();
+        if (cleanText) {
+          results.push(cleanText);
+        }
       }
 
-      return (
-        result ||
-        'Nenhuma informação clara encontrada na web sobre este assunto. Avise o usuário.'
-      );
-    } catch (error) {
-      console.error('Erro na API de busca:', error);
-      throw new Error('Falha na busca web');
+      if (results.length > 0) {
+        return results.map((r, i) => `Fonte ${i + 1}: ${r}`).join('\n\n');
+      }
+
+      return 'Nenhuma informação clara encontrada na web sobre este assunto. Avise o usuário.';
+    } catch (error: any) {
+      console.error('Erro na busca web sem conta:', error.message);
+      return 'Desculpe, a conexão com a internet falhou ao tentar buscar essa informação.';
     }
   }
 }
