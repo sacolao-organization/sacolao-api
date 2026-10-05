@@ -382,7 +382,7 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
     return axios.post(
       'http://localhost:20128/v1/chat/completions',
       {
-        model: process.env.IA_MODEL,
+        model: 'combao',
         messages,
         stream: false,
         temperature: 0.1,
@@ -397,36 +397,41 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
     );
   }
 
-  private async performWebSearch(query: string): Promise<string> {
+  private async performWebSearch(searchQuery: string): Promise<string> {
     try {
-      const response = await axios.get('https://html.duckduckgo.com/html/', {
-        params: { q: query },
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      const response = await axios.post(
+        'http://localhost:20128/v1/search',
+        {
+          model: 'ollama-search',
+          query: searchQuery,
+          max_results: 5,
         },
-      });
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.ROUTER_TOKEN}`,
+          },
+          timeout: 30000,
+        },
+      );
 
-      const html = response.data;
+      const data = response.data;
 
-      const regex = /class="result__snippet[^>]*>([\s\S]*?)<\//gi;
-      let matches;
-      const results: string[] = [];
-
-      while ((matches = regex.exec(html)) !== null && results.length < 3) {
-        const cleanText = matches[1].replace(/<\/?[^>]+(>|$)/g, '').trim();
-        if (cleanText) {
-          results.push(cleanText);
-        }
+      if (data && typeof data === 'object') {
+        const results = data.results || data.data || data.organic || data;
+        const textResult =
+          typeof results === 'string' ? results : JSON.stringify(results);
+        return textResult.length > 2500
+          ? textResult.substring(0, 2500) + '...'
+          : textResult;
       }
 
-      if (results.length > 0) {
-        return results.map((r, i) => `Fonte ${i + 1}: ${r}`).join('\n\n');
-      }
-
-      return 'Nenhuma informação clara encontrada na web sobre este assunto. Avise o usuário.';
+      return typeof data === 'string' ? data : 'Nenhuma informação encontrada.';
     } catch (error: any) {
-      console.error('Erro na busca web sem conta:', error.message);
+      console.error(
+        'Erro na API de busca do 9Router:',
+        error.response?.data || error.message,
+      );
       return 'Desculpe, a conexão com a internet falhou ao tentar buscar essa informação.';
     }
   }
