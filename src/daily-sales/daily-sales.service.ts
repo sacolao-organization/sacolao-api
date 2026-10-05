@@ -144,7 +144,7 @@ export class DailySalesService {
 
     const today = new Date();
 
-    return sales.map((sale) => {
+    const mappedSales = sales.map((sale) => {
       const absoluteLastDate =
         lastOverallDateMap.get(sale.cash_register_id) || sale.report_date;
 
@@ -160,6 +160,15 @@ export class DailySalesService {
         is_outdated: isOutdated,
       };
     });
+
+    const lastSale = await this.prismaService.daily_sales.findFirst({
+      orderBy: { report_date: 'desc' },
+    });
+
+    return {
+      data: mappedSales,
+      lastUpdate: lastSale?.report_date || null,
+    };
   }
 
   async updateSale(id: string, data: UpdateDailySaleDTO) {

@@ -154,6 +154,10 @@ icms_aliquot_mix_fiscal_stores, icms_aliquot_mix_fiscal_jasps = Sugestões de al
 Essa é a tabela principal da "Auditoria/Conferência de Produtos". Ela guarda uma "foto" mensal de cada item por loja, servindo como um mapa de divergências: compara como o produto foi vendido (Dados do Mês), como ele foi comprado do fornecedor (Última Compra) e qual é a orientação da consultoria (Mix Fiscal).
 `;
 
+    const now = new Date();
+    const currentDateIso = now.toISOString();
+    const currentDateLocal = now.toLocaleDateString('pt-BR');
+
     const dbSchema = `
 Você atua como uma interface de leitura do banco de dados (JSON-to-ORM).
 
@@ -177,16 +181,12 @@ ${hasProductsAccess ? productMonthlyDataPrompt : ''}
 
 REGRAS OBRIGATÓRIAS PARA DATAS:
 
-- note_date e receipt_date são campos DateTime do Prisma.
+- A data e hora atual do sistema é: ${currentDateIso} (Data local: ${currentDateLocal}). Use esta data exata como base para calcular "hoje", "ontem", "últimos 7 dias", etc.
+- note_date, receipt_date, report_date e reference_month são campos DateTime do Prisma.
 - NUNCA use uma data no formato "YYYY-MM-DD" diretamente em uma consulta Prisma.
 - Toda data utilizada em filtros Prisma deve estar obrigatoriamente no formato ISO-8601 completo.
-- Formato obrigatório:
-  "YYYY-MM-DDTHH:mm:ss.sssZ"
-- Exemplos válidos:
-  "2026-01-01T00:00:00.000Z"
-  "2026-12-31T23:59:59.999Z"
-- Exemplo INVÁLIDO:
-  "2026-01-01"
+- Formato obrigatório: "YYYY-MM-DDTHH:mm:ss.sssZ"
+- Exemplos válidos: "2026-01-01T00:00:00.000Z"
 
 Ao consultar períodos:
 
@@ -194,29 +194,19 @@ Para consultar o ano inteiro de 2026:
 "gte": "2026-01-01T00:00:00.000Z"
 "lt": "2027-01-01T00:00:00.000Z"
 
-Para consultar janeiro de 2026:
-"gte": "2026-01-01T00:00:00.000Z"
-"lt": "2026-02-01T00:00:00.000Z"
-
-Para consultar um único dia, por exemplo 15/01/2026:
-"gte": "2026-01-15T00:00:00.000Z"
-"lt": "2026-01-16T00:00:00.000Z"
-
-Quando o usuário informar apenas uma data, considere-a como o dia inteiro.
-
 Prefira "lt" para definir o limite final de períodos em vez de "lte", utilizando o início do período seguinte.
-
-Nunca utilize formatos de data diferentes de ISO-8601 completo nos filtros DateTime.
 
 Se precisar buscar informações nas tabelas, retorne APENAS um bloco JSON entre as tags <PRISMA> e </PRISMA>, usando a sintaxe de argumentos do ORM Prisma.
 
 Operações permitidas: "findMany" ou "count".
 
-ATENÇÃO:
-- Em consultas do tipo "listar", utilize sempre um "take" máximo de 10 ou 15 itens para não sobrecarregar o sistema.
-- Caso existam mais registros do que o limite, informe isso na resposta final.
+ATENÇÃO CRÍTICA AO FORMATO JSON:
+- O conteúdo dentro das tags <PRISMA> e </PRISMA> DEVE ser um JSON estritamente válido.
+- Em consultas do tipo "listar", utilize sempre um "take" máximo de 10 ou 15 itens para não sobrecarregar o sistema e caso existam mais registros do que o limite, informe isso na resposta final..
+- NÃO adicione comentários (//).
 - Não gere consultas SQL.
 - Não utilize operações de escrita, atualização ou exclusão.
+- NÃO utilize funções SQL ou Javascript (como NOW(), DATE_SUB(), etc). Entregue apenas as strings ISO prontas.
 - NUNCA mostre consultas internas ou resultados de banco de dados diretamente ao usuário. Sempre filtre e resuma os dados antes de apresentar a resposta final.
 
 Exemplo de uso:
@@ -373,7 +363,7 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
           'Content-Type': 'application/json',
           Authorization: `Bearer ${process.env.ROUTER_TOKEN}`,
         },
-        timeout: 60000,
+        timeout: 120000,
       },
     );
   }

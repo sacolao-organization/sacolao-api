@@ -200,10 +200,36 @@ export class NotesRuralSuppliersService {
       where.OR = [{ receipt_date: dateFilter }, { note_date: dateFilter }];
     }
 
-    return await this.prismaService.notes_rural_suppliers.findMany({
+    const notes = await this.prismaService.notes_rural_suppliers.findMany({
       where,
       orderBy: { created_at: 'desc' },
     });
+
+    const lastIssued = await this.prismaService.notes_rural_suppliers.findFirst(
+      {
+        where: { receipt_access_key: { not: null } },
+        orderBy: { receipt_date: 'desc' },
+      },
+    );
+
+    const lastPending =
+      await this.prismaService.notes_rural_suppliers.findFirst({
+        where: { receipt_access_key: null, goods_received: false },
+        orderBy: { note_date: 'desc' },
+      });
+
+    const lastPriority =
+      await this.prismaService.notes_rural_suppliers.findFirst({
+        where: { receipt_access_key: null, goods_received: true },
+        orderBy: { note_date: 'desc' },
+      });
+
+    return {
+      data: notes,
+      lastIssuedDate: lastIssued?.receipt_date || lastIssued?.note_date || null,
+      lastPendingDate: lastPending?.note_date || null,
+      lastPriorityDate: lastPriority?.note_date || null,
+    };
   }
 
   async deleteNote(id: string) {
