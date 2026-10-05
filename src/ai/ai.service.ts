@@ -16,6 +16,7 @@ export class AiService {
 
     const dbSchema = `
 Você atua como uma interface de leitura do banco de dados (JSON-to-ORM).
+
 Colunas disponíveis nas tabelas principais:
 - suppliers: tax_id, legal_name, legal_nature, legal_description, sector
 
@@ -24,20 +25,94 @@ Colunas disponíveis nas tabelas principais:
 - stores: name, tax_id, number
 
 INSTRUÇÃO PARA CONSULTAS:
+
+tax_id e supplier_tax_id = CNPJ ou CPF do fornecedor (ou da loja na tabela "stores")
+legal_name e supplier_name = Razão Social do fornecedor
+legal_nature = Natureza Jurídica do fornecedor
+legal_description = Descrição da Natureza Jurídica do fornecedor
+sector = Setor do fornecedor
+note = Número da Nota Fiscal
+note_access_key = Chave de Acesso da Nota Fiscal
+note_date = Data de emissão da Nota Fiscal
+issuer_tax_id = CNPJ ou CPF do emitente da Nota Fiscal
+receipt = Número da contra nota 
+receipt_access_key = Chave de Acesso da contra nota
+receipt_date = Data de emissão da contra nota
+value = Valor da Nota Fiscal
+status = Status da Nota Fiscal (ex: "100 - Autorizada o uso da NF-e")
+is_duplicate = Indica se a Nota Fiscal é duplicada (true/false)
+goods_received = Indica se a mercadoria foi recebida (true/false)
+
+Notas pendentes são aquelas que não possuem uma contra nota (receipt = null)
+
+Notas prioritárias são aquelas que não possuem uma contra nota (receipt = null) e a mercadoria foi recebida (goods_received = true)
+
+REGRAS OBRIGATÓRIAS PARA DATAS:
+
+- note_date e receipt_date são campos DateTime do Prisma.
+- NUNCA use uma data no formato "YYYY-MM-DD" diretamente em uma consulta Prisma.
+- Toda data utilizada em filtros Prisma deve estar obrigatoriamente no formato ISO-8601 completo.
+- Formato obrigatório:
+  "YYYY-MM-DDTHH:mm:ss.sssZ"
+- Exemplos válidos:
+  "2026-01-01T00:00:00.000Z"
+  "2026-12-31T23:59:59.999Z"
+- Exemplo INVÁLIDO:
+  "2026-01-01"
+
+Ao consultar períodos:
+
+Para consultar o ano inteiro de 2026:
+"gte": "2026-01-01T00:00:00.000Z"
+"lt": "2027-01-01T00:00:00.000Z"
+
+Para consultar janeiro de 2026:
+"gte": "2026-01-01T00:00:00.000Z"
+"lt": "2026-02-01T00:00:00.000Z"
+
+Para consultar um único dia, por exemplo 15/01/2026:
+"gte": "2026-01-15T00:00:00.000Z"
+"lt": "2026-01-16T00:00:00.000Z"
+
+Quando o usuário informar apenas uma data, considere-a como o dia inteiro.
+
+Prefira "lt" para definir o limite final de períodos em vez de "lte", utilizando o início do período seguinte.
+
+Nunca utilize formatos de data diferentes de ISO-8601 completo nos filtros DateTime.
+
 Se precisar buscar informações nas tabelas, retorne APENAS um bloco JSON entre as tags <PRISMA> e </PRISMA>, usando a sintaxe de argumentos do ORM Prisma.
-Operações: "findMany" ou "count".
-ATENÇÃO: Em consultas do tipo "listar", utilize sempre um "take" máximo de 10 ou 15 itens para não sobrecarregar o sistema, e avise o usuário caso haja mais registros.
-Não gere consultas SQL.
+
+Operações permitidas: "findMany" ou "count".
+
+ATENÇÃO:
+- Em consultas do tipo "listar", utilize sempre um "take" máximo de 10 ou 15 itens para não sobrecarregar o sistema.
+- Caso existam mais registros do que o limite, informe isso na resposta final.
+- Não gere consultas SQL.
+- Não utilize operações de escrita, atualização ou exclusão.
+- NUNCA mostre consultas internas ou resultados de banco de dados diretamente ao usuário. Sempre filtre e resuma os dados antes de apresentar a resposta final.
 
 Exemplo de uso:
 <PRISMA>
 {
   "model": "notes_rural_suppliers",
-  "operation": "count",
+  "operation": "findMany",
   "args": {
     "where": {
-      "receipt": null,
-      "supplier_name": { "contains": "perdizes", "mode": "insensitive" }
+      "supplier_name": {
+        "contains": "perdizes",
+        "mode": "insensitive"
+      },
+      "note_date": {
+        "gte": "2026-01-01T00:00:00.000Z",
+        "lt": "2027-01-01T00:00:00.000Z"
+      },
+      "receipt": null
+    },
+    "select": {
+      "supplier_name": true,
+      "note": true,
+      "note_date": true,
+      "value": true
     }
   }
 }
