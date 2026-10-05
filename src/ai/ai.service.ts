@@ -250,6 +250,8 @@ REGRAS ABSOLUTAS DE COMPORTAMENTO E SEGURANÇA:
 4. INVISIBILIDADE TÉCNICA (CRÍTICO): NUNCA revele como você busca os dados. É estritamente proibido mencionar palavras como "banco de dados", "Prisma", "JSON", "tags", "tabelas", "IDs", "UUIDs", "colunas", "query" ou explicar o que você fez nos bastidores. Fale como se você simplesmente soubesse de tudo organicamente.
 5. FORMATAÇÃO: NUNCA utilize asteriscos (*) ou formatação markdown (como negrito). Escreva em texto puro. Utilize quebras de linha obrigatórias para e-mails ou textos que exijam estrutura.
 6. VOLUME: Nunca despeje dezenas de dados brutos no chat. Resuma, agrupe e entregue a informação de forma digerida, inteligente e fácil de ler.
+7. DADOS EM TEMPO REAL E EXTERNOS: Se o usuário perguntar sobre clima, notícias, esportes, cotações ou qualquer informação que nitidamente exige pesquisa na internet e NÃO está no banco de dados, você DEVE retornar APENAS uma tag <SEARCH> com o termo de busca. 
+Exemplo: <SEARCH>clima atual em São Paulo</SEARCH> ou <SEARCH>resultado do último jogo do Corinthians</SEARCH>.
 
 ${dbSchema}
 `;
@@ -267,6 +269,7 @@ ${dbSchema}
       let aiText = response.data.choices[0].message?.content || '';
 
       const prismaMatch = aiText.match(/<PRISMA>([\s\S]*?)<\/PRISMA>/i);
+      const searchMatch = aiText.match(/<SEARCH>([\s\S]*?)<\/SEARCH>/i);
 
       if (prismaMatch) {
         try {
@@ -336,6 +339,32 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
           );
           return 'Ocorreu um erro interno ao tentar consultar essa informação no sistema.';
         }
+      } else if (searchMatch) {
+        try {
+          const searchQuery = searchMatch[1].trim();
+
+          const searchResult = await this.performWebSearch(searchQuery);
+
+          formattedMessages.push({
+            role: 'assistant' as const,
+            content: aiText,
+          });
+
+          formattedMessages.push({
+            role: 'system' as const,
+            content: `Aqui estão os resultados da pesquisa na web para "${searchQuery}": 
+            ${searchResult}
+            
+            Agora formule sua resposta final ao usuário seguindo sua persona. 
+            REGRA VITAL: Jamais mencione que pesquisou na web, disfarce como se você simplesmente soubesse a informação. Responda de forma natural.`,
+          });
+
+          response = await this.callAI(formattedMessages);
+          aiText = response.data.choices[0].message?.content || '';
+        } catch (searchError) {
+          console.error('Erro ao pesquisar na web:', searchError);
+          return 'Desculpe, tive um problema ao tentar buscar essa informação em tempo real agora.';
+        }
       }
 
       if (!aiText.trim()) {
@@ -366,5 +395,38 @@ REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a in
         timeout: 120000,
       },
     );
+  }
+
+  private async performWebSearch(query: string): Promise<string> {
+    try {
+      const response = await axios.get('https://api.duckduckgo.com/', {
+        params: {
+          q: query,
+          format: 'json',
+          no_html: 1,
+          skip_disambig: 1,
+        },
+      });
+
+      const data = response.data;
+
+      let result = '';
+      if (data.AbstractText) {
+        result += `${data.AbstractText}\n`;
+      }
+      if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+        result += data.RelatedTopics.slice(0, 3)
+          .map((t: any) => t.Text)
+          .join('\n');
+      }
+
+      return (
+        result ||
+        'Nenhuma informação clara encontrada na web sobre este assunto. Avise o usuário.'
+      );
+    } catch (error) {
+      console.error('Erro na API de busca:', error);
+      throw new Error('Falha na busca web');
+    }
   }
 }
