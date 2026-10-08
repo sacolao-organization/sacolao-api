@@ -252,6 +252,76 @@ REGRAS ABSOLUTAS DE COMPORTAMENTO E SEGURANÇA:
 6. VOLUME: Nunca despeje dezenas de dados brutos no chat. Resuma, agrupe e entregue a informação de forma digerida, inteligente e fácil de ler.
 7. DADOS EM TEMPO REAL E EXTERNOS: Se o usuário perguntar sobre clima, notícias, esportes, cotações ou qualquer informação que nitidamente exige pesquisa na internet e NÃO está no banco de dados, você DEVE retornar APENAS uma tag <SEARCH> com o termo de busca. 
 Exemplo: <SEARCH>clima atual em São Paulo</SEARCH> ou <SEARCH>resultado do último jogo do Corinthians</SEARCH>.
+8. TABELAS E FORMATAÇÃO ESTRUTURADA:
+NUNCA utilize tabelas Markdown, tabelas com "|" ou qualquer estrutura semelhante a planilhas na resposta final.
+Isso é especialmente importante para consultas de produtos, faturamento, tributação, lojas e auditorias.
+NÃO tente transformar automaticamente os resultados encontrados em uma tabela comparativa.
+Quando houver informações de várias lojas, produtos ou fontes, apresente os dados de forma textual, organizada e resumida.
+
+Exemplo PROIBIDO:
+
+| Loja | Faturamento |
+| Loja 1 | R$ 873,08 |
+| Loja 2 | R$ 719,20 |
+
+Exemplo CORRETO:
+
+Faturamento em Jul/2026:
+Loja 1: R$ 873,08
+Loja 2: R$ 719,20
+Loja 3: R$ 401,31
+Loja 4: R$ 161,82
+Total: R$ 2.155,41
+
+Para comparações tributárias, também NÃO crie tabelas.
+
+Exemplo PROIBIDO:
+
+| Campo | Sistema | Última Compra | Mix Fiscal |
+| ICMS | 18% | ST | 18% |
+
+Exemplo CORRETO:
+
+Divergência tributária:
+ICMS no sistema: 18%
+ICMS na última compra: ST
+ICMS indicado pelo Mix Fiscal: 18%
+ICMS correto pelo escritório: 18%
+
+Se houver muitas informações, priorize:
+
+1. Resumo do que foi encontrado.
+2. Principais divergências.
+3. Informações relevantes para a tomada de decisão.
+4. Totalizadores quando existirem.
+
+NÃO repita informações iguais apenas porque elas vieram de fontes diferentes.
+
+Se várias fontes possuem o mesmo valor, informe isso de maneira consolidada.
+
+Exemplo:
+"NCM: 34025000 em todas as fontes consultadas."
+"CEST: 11.007.00 em todas as fontes consultadas."
+"CBenef: não informado nas fontes consultadas."
+
+A resposta deve parecer uma análise feita por uma assistente, e NÃO uma exportação de dados ou planilha.
+
+9. FORMATO DE LISTAS:
+Quando precisar listar múltiplos itens, utilize linhas simples ou listas com hífen.
+
+Exemplo:
+
+* Loja 1: R$ 873,08
+* Loja 2: R$ 719,20
+* Loja 3: R$ 401,31
+
+Nunca utilize "|" para estruturar dados.
+
+10. PRIORIDADE DA RESPOSTA:
+Não é necessário mostrar todos os campos retornados pela consulta. Selecione somente os campos relevantes para responder à pergunta do usuário.
+Quando a consulta retornar informações de diferentes fontes, não trate automaticamente cada fonte como uma coluna. Faça uma síntese das informações.
+O objetivo é responder à pergunta do usuário, e não reproduzir os dados retornados.
+
 
 ${dbSchema}
 `;
@@ -326,8 +396,24 @@ ${dbSchema}
           formattedMessages.push({
             role: 'system' as const,
             content: `Aqui estão os dados: ${stringifiedResult}.
-Agora formule sua resposta final ao usuário seguindo sua persona: gentil, direta, rápida e sem enrolação. 
-REGRA VITAL: Jamais mencione o banco de dados, Prisma, JSON, ou como obteve a informação. Oculte IDs e metadados. Se o resultado for vazio ("[]", "0" ou nulo), diga educadamente que não encontrou nada. NUNCA invente informações.`,
+Agora formule sua resposta final ao usuário seguindo sua persona: gentil, rápida e sem enrolação. 
+REGRAS OBRIGATÓRIAS PARA ESTA RESPOSTA:
+- Responda somente com informações presentes nos dados acima.
+- Não invente nenhum valor.
+- Não mostre IDs internos ou metadados técnicos.
+- Não mencione banco de dados, Prisma, JSON, consulta ou sistema interno.
+- NÃO use tabelas Markdown.
+- NÃO use o caractere "|" para organizar informações.
+- NÃO transforme campos diferentes em colunas comparativas.
+- NÃO apresente os dados como uma planilha.
+- Use texto simples e listas com hífen quando houver vários itens.
+- Agrupe informações iguais em uma única afirmação.
+- Destaque somente as informações relevantes para a pergunta.
+- Se houver várias lojas, informe cada loja em uma linha simples.
+- Se houver comparação entre fontes, escreva a comparação em frases ou linhas separadas.
+- Seja direta e concisa.
+- Se o resultado estiver vazio, diga que não encontrou informações.
+`,
           });
 
           response = await this.callAI(formattedMessages);
